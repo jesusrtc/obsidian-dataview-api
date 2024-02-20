@@ -10,16 +10,39 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default'
 }
 
-export default class MyPlugin extends Plugin {
+export default class HelloWorldPlugin extends Plugin {
 	settings: MyPluginSettings;
 
 	async onload() {
 		await this.loadSettings();
 
+		// File creation
+		this.registerEvent(this.app.vault.on('create', (file) => {
+			console.log('File created:', file.path);
+			this.updateIndex(file.path);
+		}));
+
+		// File modification
+		this.registerEvent(this.app.vault.on('modify', (file) => {
+			console.log('File modified:', file.path);
+			this.updateIndex(file.path);
+		}));
+
+		// File deletion
+		this.registerEvent(this.app.vault.on('delete', (file) => {
+			console.log('File deleted:', file.path);
+			this.updateIndex(file.path);
+		}));
+
+		// File rename
+		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+			console.log(`File renamed from ${oldPath} to ${file.path}`);
+			this.updateIndex(file.path);
+		}));
+
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			new Notice('This is a notice jeje!');
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('my-plugin-ribbon-class');
@@ -80,6 +103,26 @@ export default class MyPlugin extends Plugin {
 
 	onunload() {
 
+	}
+
+	async updateIndex(inputPath: string) {
+		if (!inputPath.includes(".md")) {
+			return;
+		}
+		console.log("Index refresh started");
+		const vaultRootPath = this.app.vault.adapter.getBasePath();
+		const startTime = Date.now();
+		const fs = require('fs');
+		const dataBasePath = vaultRootPath + '/Code/db.json';
+		const dataviewAPI = this.app.plugins.plugins["dataview"]?.api;
+		if(dataviewAPI) {
+			const pages = await this.app.plugins.plugins.dataview.index.pages;				
+			const arrayPage = Array.from(pages, ([key, value]) => ({ key, value }));
+			fs.writeFileSync(dataBasePath, JSON.stringify(arrayPage, null, 2));
+		}
+		const endTime = Date.now();
+		const timeElapsedInSeconds = (endTime - startTime) / 1000;
+		console.log(`Index refresh completed in: ${timeElapsedInSeconds} seconds.`);
 	}
 
 	async loadSettings() {
