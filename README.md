@@ -1,3 +1,6 @@
+npm install
+npm run dev
+
 # Obsidian Sample Plugin
 
 This is a sample plugin for Obsidian (https://obsidian.md).

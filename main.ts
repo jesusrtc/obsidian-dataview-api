@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-
+const fs = require('fs');
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
@@ -18,8 +18,8 @@ export default class HelloWorldPlugin extends Plugin {
 
 		// File creation
 		this.registerEvent(this.app.vault.on('create', (file) => {
-			console.log('File created:', file.path);
-			this.updateIndex(file.path);
+			// console.log('File created:', file.path);
+			// this.updateIndex(file.path);
 		}));
 
 		// File modification
@@ -110,19 +110,23 @@ export default class HelloWorldPlugin extends Plugin {
 			return;
 		}
 		console.log("Index refresh started");
-		const vaultRootPath = this.app.vault.adapter.getBasePath();
 		const startTime = Date.now();
-		const fs = require('fs');
-		const dataBasePath = vaultRootPath + '/Code/db.json';
-		const dataviewAPI = this.app.plugins.plugins["dataview"]?.api;
-		if(dataviewAPI) {
-			const pages = await this.app.plugins.plugins.dataview.index.pages;				
-			const arrayPage = Array.from(pages, ([key, value]) => ({ key, value }));
-			fs.writeFileSync(dataBasePath, JSON.stringify(arrayPage, null, 2));
-		}
+		const dataview = this.app.plugins.plugins.dataview.api;
+		// Retrieve pages that have a specific key-value pair in their metadata
+		const pagesWithSpecificMetadata = await dataview.pages();
+
+		// Iterate over the results and do something with them
+		console.log('Pages', pagesWithSpecificMetadata);
+
+
+		//const arrayPage2 = Array.from(pagesWithSpecificMetadata, ([key, value]) => ({ key, value }));
+		const arrayPage = Array.from(pagesWithSpecificMetadata);
+		const vaultRootPath = this.app.vault.adapter.getBasePath();
+		const dataBasePath = vaultRootPath + '/Code/db_dataview_index.json';
+		fs.writeFileSync(dataBasePath, JSON.stringify(arrayPage, null, 2));
 		const endTime = Date.now();
-		const timeElapsedInSeconds = (endTime - startTime) / 1000;
-		console.log(`Index refresh completed in: ${timeElapsedInSeconds} seconds.`);
+		const timeElapsedInSeconds2 = (endTime - startTime) / 1000;
+		console.log(`API query Index refresh completed in: ${timeElapsedInSeconds2} seconds`);
 	}
 
 	async loadSettings() {
