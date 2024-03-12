@@ -148,16 +148,12 @@ export default class HelloWorldPlugin extends Plugin {
 		if (!file.path.includes(".md")) {
 			return;
 		}
-		if (!file.path.includes("Tasks")) {
-			return;
-		}
 		const {getPropertyValue} = this.app.plugins.plugins["metaedit"].api;
 		const status = await getPropertyValue("status", file.path);
 		if (status !== "Completed" && status !== "Closed") {
 			return;
 		}
 
-		const vault = this.app.vault;
 		const datePattern = /\d{4}-\d{2}-\d{2}/;		
 		const isoToday = this.getIsoToday();
 
@@ -180,13 +176,14 @@ export default class HelloWorldPlugin extends Plugin {
 
 		console.log("Renaming file from: ", file.path);
 		console.log("Renaming file to: ", newFilePath);
-		
-		// Rename the file
-		vault.rename(file, newFilePath).then(() => {
-			console.log("File renamed successfully");
-		}).catch(err => {
-			console.error("Error renaming file:", err);
-		});	
+
+		this.app.fileManager.renameFile(file, newFilePath).then(() => {
+			//https://forum.obsidian.md/t/enable-auto-renaming-links-in-obsidian-api/63842/4
+			console.log("File renamed in fileManager successfully");
+		}
+		).catch(err => {
+			console.error("Error renaming file in fileManager:", err);
+		});
 	}
 
 	async updateOnDate(file: TFile) {
