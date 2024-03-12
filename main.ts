@@ -1,4 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { TAbstractFile, TFile } from "obsidian";
+
 const fs = require('fs');
 // Remember to rename these classes and interfaces!
 
@@ -26,6 +28,10 @@ export default class HelloWorldPlugin extends Plugin {
 		this.registerEvent(this.app.vault.on('modify', (file) => {
 			console.log('File modified:', file.path);
 			this.updateIndex(file.path);
+			if(file instanceof TFile) {
+				this.updateOnDate(file);
+				this.moveClosedToArchived(file);
+			};
 		}));
 
 		// File deletion
@@ -105,6 +111,15 @@ export default class HelloWorldPlugin extends Plugin {
 
 	}
 
+	getIsoToday() {
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = String(today.getMonth() + 1).padStart(2, '0'); 
+		const day = String(today.getDate()).padStart(2, '0');
+
+		return `${year}-${month}-${day}`
+	}
+
 	async updateIndex(inputPath: string) {
 		if (!inputPath.includes(".md")) {
 			return;
@@ -127,6 +142,65 @@ export default class HelloWorldPlugin extends Plugin {
 		const endTime = Date.now();
 		const timeElapsedInSeconds2 = (endTime - startTime) / 1000;
 		console.log(`API query Index refresh completed in: ${timeElapsedInSeconds2} seconds`);
+	}
+
+	async moveClosedToArchived(file: TFile) {
+		if (!file.path.includes(".md")) {
+			return;
+		}
+		if (!file.path.includes("Tasks")) {
+			return;
+		}
+		const {getPropertyValue} = this.app.plugins.plugins["metaedit"].api;
+		const status = await getPropertyValue("status", file.path);
+		if (status !== "Completed" && status !== "Closed") {
+			return;
+		}
+
+		const vault = this.app.vault;
+		const datePattern = /\d{4}-\d{2}-\d{2}/;		
+		const isoToday = this.getIsoToday();
+
+		let newFileName = file.name;
+		// Check if file name contains yyy-mm-dd, if not add the isoToday
+		if (!datePattern.test(file.name)) {
+			console.log("Update will rename file to include date");
+			newFileName = isoToday + ' ' + file.name;
+		} 
+
+		let newFilePath = file.path.replace(/[^/]*$/, newFileName);
+		if (!file.path.includes("Archive")) {
+			console.log("Update will move file to Archive");
+			newFilePath = file.path.replace(/[^/]*$/, 'Archive/' + newFileName);
+		}
+
+		if(file.path === newFilePath) {
+			return;
+		}
+
+		console.log("Renaming file from: ", file.path);
+		console.log("Renaming file to: ", newFilePath);
+		
+		// Rename the file
+		vault.rename(file, newFilePath).then(() => {
+			console.log("File renamed successfully");
+		}).catch(err => {
+			console.error("Error renaming file:", err);
+		});	
+	}
+
+	async updateOnDate(file: TFile) {
+		if (!file.path.includes(".md")) {
+			return;
+		}
+		const {update, autoprop, getPropertyValue} = this.app.plugins.plugins["metaedit"].api;
+		//await update("status", "Completeded", file.path);
+		const updatedOn = await getPropertyValue("updated_on", file.path);
+		const isoToday = this.getIsoToday();
+		if(updatedOn != isoToday) {
+			console.log("Updating updated_on");
+			await update("updated_on", isoToday, file.path);
+		}
 	}
 
 	async loadSettings() {
